@@ -1,1 +1,5 @@
-from django.db import models
+from tracking.base_models import BaseAPIRequestLog
+
+
+class APIRequestLog(BaseAPIRequestLog):
+    pass
