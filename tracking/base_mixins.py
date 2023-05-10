@@ -1,3 +1,5 @@
+from traceback import format_exc
+
 from django.utils.timezone import now
 
 
@@ -29,6 +31,11 @@ class BaseLoggingMixin:
     def handle_log(self):
         raise NotImplementedError
 
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        self.log['errors'] = format_exc()
+        return response
+
     def _get_ip_address(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
@@ -54,3 +61,8 @@ class BaseLoggingMixin:
         timedelta = now() - self.log['requested_at']
         response_ms = round(timedelta.total_seconds() * 1000)
         return max(response_ms, 0)
+
+# query_params
+# data
+# response
+# errors
