@@ -4,6 +4,8 @@ from django.utils.timezone import now
 
 
 class BaseLoggingMixin:
+    logging_methods = '__all__'
+
     def initial(self, request, *args, **kwargs):
         user, username = self._get_user(request)
         self.log = {
@@ -25,11 +27,17 @@ class BaseLoggingMixin:
             'response_ms': self._get_response_ms(),
             'status_code': response.status_code,
         })
-        self.handle_log()
+        self.handle_log(request, response)
         return response
 
-    def handle_log(self):
+    def handle_log(self, request, response):
         raise NotImplementedError
+
+    def should_log(self, request, response):
+        return bool(
+            self.logging_methods == '__all__' or
+            request.method in self.logging_methods
+        )
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
