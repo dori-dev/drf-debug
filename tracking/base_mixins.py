@@ -1,6 +1,10 @@
 from traceback import format_exc
+import logging
 
 from django.utils.timezone import now
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseLoggingMixin:
@@ -27,7 +31,10 @@ class BaseLoggingMixin:
             'response_ms': self._get_response_ms(),
             'status_code': response.status_code,
         })
-        self.handle_log(request, response)
+        try:
+            self.handle_log(request, response)
+        except Exception:
+            logger.exception('Logging API call raise exception!')
         return response
 
     def handle_log(self, request, response):
@@ -69,8 +76,3 @@ class BaseLoggingMixin:
         timedelta = now() - self.log['requested_at']
         response_ms = round(timedelta.total_seconds() * 1000)
         return max(response_ms, 0)
-
-# query_params
-# data
-# response
-# errors
