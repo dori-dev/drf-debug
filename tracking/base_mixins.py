@@ -1,8 +1,31 @@
+from django.utils.timezone import now
+
+
 class BaseLoggingMixin:
     def initial(self, request, *args, **kwargs):
+        user, username = self._get_user(request)
+        self.log = {
+            'requested_at': now(),
+            'method': request.method,
+            'host': request.get_host(),
+            'path': request.path,
+            'remote_addr': self._get_ip_address(request),
+            'view': self._get_view_name(request),
+            'view_method': self._get_view_method(request),
+            'user': user,
+            'username_persistent': username,
+        }
         super().initial(request, *args, **kwargs)
 
     def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        self.log.update({
+            'response_ms': self._get_response_ms(),
+            'status_code': response.status_code,
+        })
+        self.handle_log()
+        return response
+
     def handle_log(self):
         raise NotImplementedError
 
