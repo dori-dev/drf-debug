@@ -5,12 +5,17 @@ from tracking.mixins import LoggingMixin
 
 
 class Home(LoggingMixin, APIView):
-    logging_methods = [
-        'GET',
+    # logging_methods = [
+    #     'GET',
+    # ]
+    
+    sensitive_fields = [
+        'secret',
+        'password'
     ]
 
-    def should_log(self, request, response):
-        return response.status_code >= 400
+    # def should_log(self, request, response):
+    #     return response.status_code >= 400
 
     def get(self, request):
         return Response({}, status=404)

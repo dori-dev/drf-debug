@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 class BaseLoggingMixin:
     logging_methods = '__all__'
+    sensitive_fields = []
 
     def initial(self, request, *args, **kwargs):
         user, username = self._get_user(request)
@@ -20,8 +21,10 @@ class BaseLoggingMixin:
             'remote_addr': self._get_ip_address(request),
             'view': self._get_view_name(request),
             'view_method': self._get_view_method(request),
+            'query_params': self._cleaned_data(request),
             'user': user,
             'username_persistent': username,
+            'data': request.data,
         }
         super().initial(request, *args, **kwargs)
 
@@ -30,6 +33,7 @@ class BaseLoggingMixin:
         self.log.update({
             'response_ms': self._get_response_ms(),
             'status_code': response.status_code,
+            'response': response.data,
         })
         try:
             self.handle_log(request, response)
@@ -76,3 +80,10 @@ class BaseLoggingMixin:
         timedelta = now() - self.log['requested_at']
         response_ms = round(timedelta.total_seconds() * 1000)
         return max(response_ms, 0)
+
+    def _cleaned_data(self, request):
+        data: dict = request.query_params.dict()
+        return dict(filter(
+            lambda item: item[0] not in self.sensitive_fields,
+            data.items(),
+        ))
