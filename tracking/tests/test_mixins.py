@@ -48,3 +48,30 @@ class TestLoggingMixin(APITestCase):
         MockLoggingView.as_view()(request).render()
         log = APIRequestLog.objects.first()
         self.assertEqual(log.remote_addr, '127.0.1.2')
+
+    def test_log_ip_x_forwarded_for(self):
+        request = APIRequestFactory().get('/logging/')
+        request.META['HTTP_X_FORWARDED_FOR'] = '127.0.1.2, 127.0.0.3, 121.1.1.1'
+        MockLoggingView.as_view()(request).render()
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.remote_addr, '127.0.1.2')
+
+    def test_log_host(self):
+        self.client.get('/logging/')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.host, 'testserver')
+
+    def test_log_method_GET(self):
+        self.client.get('/logging/')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.method, 'GET')
+
+    def test_log_method_POST(self):
+        self.client.post('/logging/')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.method, 'POST')
+
+    def test_log_status_code(self):
+        self.client.get('/logging/')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.status_code, 404)
