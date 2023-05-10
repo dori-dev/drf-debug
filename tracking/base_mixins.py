@@ -1,5 +1,6 @@
 from traceback import format_exc
 import logging
+from copy import deepcopy
 
 from django.utils.timezone import now
 
@@ -9,10 +10,18 @@ logger = logging.getLogger(__name__)
 
 class BaseLoggingMixin:
     logging_methods = '__all__'
-    sensitive_fields = []
+    sensitive_fields = [
+        'api',
+        'token',
+        'key',
+        'secret',
+        'password',
+        'signature',
+    ]
 
     def initial(self, request, *args, **kwargs):
         user, username = self._get_user(request)
+        query_params = deepcopy(request.query_params.dict())
         self.log = {
             'requested_at': now(),
             'method': request.method,
@@ -21,7 +30,7 @@ class BaseLoggingMixin:
             'remote_addr': self._get_ip_address(request),
             'view': self._get_view_name(request),
             'view_method': self._get_view_method(request),
-            'query_params': self._cleaned_data(request),
+            'query_params': self._cleaned_data(query_params),
             'user': user,
             'username_persistent': username,
             'data': request.data,
@@ -30,10 +39,11 @@ class BaseLoggingMixin:
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
+        data = deepcopy(response.data)
         self.log.update({
             'response_ms': self._get_response_ms(),
             'status_code': response.status_code,
-            'response': response.data,
+            'response': self._cleaned_data(data),
         })
         try:
             self.handle_log(request, response)
@@ -81,9 +91,16 @@ class BaseLoggingMixin:
         response_ms = round(timedelta.total_seconds() * 1000)
         return max(response_ms, 0)
 
-    def _cleaned_data(self, request):
-        data: dict = request.query_params.dict()
-        return dict(filter(
-            lambda item: item[0] not in self.sensitive_fields,
-            data.items(),
-        ))
+    def _cleaned_data(self, data):
+        if isinstance(data, list):
+            data = [
+                self._cleaned_data(item)
+                for item in data
+            ]
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, (list, dict)):
+                    data[key] = self._cleaned_data(value)
+                if key.lower() in self.sensitive_fields:
+                    data[key] = "*************"
+        return data
