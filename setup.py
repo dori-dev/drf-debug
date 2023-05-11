@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="drf-debug",
-    version="1.2.0",
+    version="1.2.1",
     author="Mohammad Dori",
     author_email="mr.dori.dev@gmail.com",
     description="API tracking package.",
