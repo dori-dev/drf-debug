@@ -1,5 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import authentication
 
 from tracking.mixins import LoggingMixin
 
@@ -10,20 +12,67 @@ class MockNoLoggingView(APIView):
 
 
 class MockLoggingView(LoggingMixin, APIView):
-    logging_methods = [
-        'GET',
-        'POST',
-    ]
-    sensitive_fields = [
-        'secret',
-        'password'
-    ]
-
-    # def should_log(self, request, response):
-    #     return response.status_code >= 400
-
     def get(self, request):
-        return Response({'secret': 'hello'}, status=404)
+        return Response({'secret': 'hello'}, status=200)
 
     def post(self, request):
         return Response({})
+
+
+class MockExplicitLoggingView(LoggingMixin, APIView):
+    logging_methods = [
+        'POST',
+    ]
+
+    def get(self, request):
+        return Response('no logging')
+
+    def post(self, request):
+        return Response('whit logging')
+
+
+class MockCustomCheckLoggingView(LoggingMixin, APIView):
+    def should_log(self, request, response):
+        return 'log' in response.data
+
+    def get(self, request):
+        return Response(['user1', 'user2', 'log'])
+
+    def post(self, request):
+        return Response(['mohammad', 'john', 'dori'])
+
+
+class MockSessionAuthLoggingView(LoggingMixin, APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        authentication.SessionAuthentication,
+    ]
+
+    def get(self, request):
+        return Response('session auth logging')
+
+
+class MockTokenAuthLoggingView(LoggingMixin, APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        authentication.TokenAuthentication,
+    ]
+
+    def get(self, request):
+        return Response('token auth logging')
+
+
+class MockSensitiveFieldsLoggingView(LoggingMixin, APIView):
+    sensitive_fields = [
+        'secret_field',
+    ]
+
+    def get(self, request):
+        return Response({
+            'sensitive': True,
+            'secret_field': 'this is a secret',
+        })
