@@ -1,3 +1,6 @@
+import datetime
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIRequestFactory
 from django.test import override_settings
@@ -129,3 +132,26 @@ class TestLoggingMixin(APITestCase):
             'name': 'mohammad',
             'secret_field': '*************',
         })
+
+    @mock.patch.object(
+        APIRequestLog,
+        'save',
+        side_effect=Exception('DB Failure')
+    )
+    def test_log_does_not_prevent_api_call_if_log_save_fails(self, mock_save):
+        response = self.client.get('/logging/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(APIRequestLog.objects.count(), 0)
+
+    @override_settings(USE_TZ=False)
+    @mock.patch('tracking.base_mixins.now')
+    def test_log_does_not_fail_with_negative_response_ms(self, mock_now):
+        mock_now.side_effect = [
+            datetime.datetime(2023, 1, 1, 10, 2, 10),
+            datetime.datetime(2023, 1, 1, 10, 2, 5),
+        ]
+        response = self.client.get('/logging/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(APIRequestLog.objects.count(), 1)
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.response_ms, 0)
