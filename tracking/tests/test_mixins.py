@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIRequestFactory
 from django.test import override_settings
 
@@ -74,4 +75,57 @@ class TestLoggingMixin(APITestCase):
     def test_log_status_code(self):
         self.client.get('/logging/')
         log = APIRequestLog.objects.first()
-        self.assertEqual(log.status_code, 404)
+        self.assertEqual(log.status_code, 200)
+
+    def test_logging_explicit(self):
+        self.client.get('/explicit-logging/')
+        self.client.post('/explicit-logging/')
+        self.assertEqual(APIRequestLog.objects.count(), 1)
+        obj = APIRequestLog.objects.first()
+        self.assertEqual(obj.response, 'with logging')
+        self.assertEqual(obj.method, 'POST')
+
+    def test_custom_check_logging(self):
+        self.client.get('/custom-check-logging/')
+        self.client.post('/custom-check-logging/')
+        self.assertEqual(APIRequestLog.objects.count(), 1)
+        obj = APIRequestLog.objects.first()
+        self.assertEqual(obj.method, 'GET')
+        self.assertIn('log', obj.response)
+
+    def test_log_anon_user(self):
+        self.client.get('/logging/')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.user, None)
+        self.assertEqual(log.username_persistent, 'Anonymous')
+
+    def test_session_auth_logging(self):
+        user_data = {
+            'username': 'testuser',
+            'password': '1234',
+        }
+        user = get_user_model().objects.create_user(**user_data)
+        self.client.login(**user_data)
+        self.client.get('/logging/')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(log.user, user)
+        self.assertEqual(log.username_persistent, user_data['username'])
+
+    def test_params_logging(self):
+        self.client.get('/logging/?a=b&ok=1')
+        log = APIRequestLog.objects.first()
+        self.assertEqual(
+            log.query_params,
+            {'a': 'b', 'ok': '1'},
+        )
+
+    def test_sensitive_params_logging(self):
+        query = '?name=mohammad&secret_field=1234'
+        self.client.get(f'/sensitive-fields-logging/{query}')
+        log = APIRequestLog.objects.first()
+        self.assertIn('secret_field', log.query_params)
+        self.assertNotEqual(log.query_params['secret_field'], '1234')
+        self.assertEqual(log.query_params, {
+            'name': 'mohammad',
+            'secret_field': '*************',
+        })

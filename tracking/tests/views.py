@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import authentication
+from rest_framework.authentication import SessionAuthentication
 
 from tracking.mixins import LoggingMixin
 
@@ -28,7 +28,7 @@ class MockExplicitLoggingView(LoggingMixin, APIView):
         return Response('no logging')
 
     def post(self, request):
-        return Response('whit logging')
+        return Response('with logging')
 
 
 class MockCustomCheckLoggingView(LoggingMixin, APIView):
@@ -47,23 +47,11 @@ class MockSessionAuthLoggingView(LoggingMixin, APIView):
         IsAuthenticated,
     ]
     authentication_classes = [
-        authentication.SessionAuthentication,
+        SessionAuthentication,
     ]
 
     def get(self, request):
         return Response('session auth logging')
-
-
-class MockTokenAuthLoggingView(LoggingMixin, APIView):
-    permission_classes = [
-        IsAuthenticated,
-    ]
-    authentication_classes = [
-        authentication.TokenAuthentication,
-    ]
-
-    def get(self, request):
-        return Response('token auth logging')
 
 
 class MockSensitiveFieldsLoggingView(LoggingMixin, APIView):
