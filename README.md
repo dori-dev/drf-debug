@@ -6,6 +6,21 @@ A package to tracking your API in django rest framework.
 
 ## Usage
 
+```
+pip install drf-debug
+```
+
+```python
+INSTALLED_APPS = [
+    ...
+    'tracking',
+]
+```
+
+```
+python manage.py migrate
+```
+
 add `tracking.mixins.LoggingMixin` to any DRF view to create a instance of `APIRequestLog` every time the view is called.
 
 ```python
