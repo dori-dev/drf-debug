@@ -20,6 +20,35 @@ class BaseLoggingMixin:
     ]
 
     def initial(self, request, *args, **kwargs):
+        self.raise_error = False
+        try:
+            self.save_request_side_log(request)
+        except Exception:
+            self.raise_error = True
+            logger.exception('Logging API call raise exception!')
+        super().initial(request, *args, **kwargs)
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if self.raise_error:
+            return response
+        try:
+            self.save_response_side_log(response)
+            self.handle_log(request, response)
+        except Exception:
+            logger.exception('Logging API call raise exception!')
+        return response
+
+    def handle_log(self, request, response):
+        raise NotImplementedError
+
+    def should_log(self, request, response):
+        return bool(
+            self.logging_methods == '__all__' or
+            request.method in self.logging_methods
+        )
+
+    def save_request_side_log(self, request):
         user, username = self._get_user(request)
         query_params = deepcopy(request.query_params.dict())
         self.log = {
@@ -35,30 +64,14 @@ class BaseLoggingMixin:
             'username_persistent': username,
             'data': request.data,
         }
-        super().initial(request, *args, **kwargs)
 
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
+    def save_response_side_log(self, response):
         data = deepcopy(response.data)
         self.log.update({
             'response_ms': self._get_response_ms(),
             'status_code': response.status_code,
             'response': self._cleaned_data(data),
         })
-        try:
-            self.handle_log(request, response)
-        except Exception:
-            logger.exception('Logging API call raise exception!')
-        return response
-
-    def handle_log(self, request, response):
-        raise NotImplementedError
-
-    def should_log(self, request, response):
-        return bool(
-            self.logging_methods == '__all__' or
-            request.method in self.logging_methods
-        )
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
